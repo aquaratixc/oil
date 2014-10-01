@@ -1,0 +1,427 @@
+package oil
+import ipl.functional,
+       util(Math)
+
+class Dual()
+private i,r
+
+   # constructor of dual number
+   public new(rp,ip)
+   /rp := 0.0
+   /ip := 0.0
+   self.r := real(rp)
+   self.i := real(ip)
+   return
+   end
+
+   # image part
+   public imagp()
+   return i
+   end
+
+   # real part
+   public realp()
+   return r
+   end
+
+   # show dual number
+   public show()
+   if i >= 0 then return r||"+"||i||"d" else return r||i||"d"
+   end
+
+   # absolute value
+   public static abs(a,b)
+   local rp,ip
+   rp := a.realp() ^ 2
+   ip := a.imagp() ^ 2
+   return Math.sqrt(rp+ip)
+   end
+
+   # add two dual numbers
+   public static add(a,b)
+   local rp,ip
+   rp := a.realp() + b.realp()
+   ip := a.imagp() + b.imagp()
+   return Dual(rp,ip)
+   end
+
+   # arccosine
+   public static acos(a)
+   local rp,ip
+   rp := Math.acos(a.realp())
+   ip := a.imagp() / Math.sqrt(1 - (a.realp() ^ 2))
+   return Dual(rp,-ip)
+   end
+
+   # arcsine
+   public static asin(a)
+   local rp,ip
+   rp := Math.asin(a.realp())
+   ip := a.imagp() / Math.sqrt(1 - (a.realp() ^ 2))
+   return Dual(rp,ip)
+   end
+
+   # arctangent
+   public static atan(a)
+   local rp,ip
+   rp := Math.atan(a.realp())
+   ip := a.imagp() / (1 + (a.realp() ^ 2))
+   return Dual(rp,ip)
+   end
+
+   # automatic differentiation
+   # NOTE: function must be implemented through a dual number, 
+   #       and return at the same time as dual number
+   public static auto_diff(f,x)
+   local d
+   d := f(Dual(x,1))
+   return d.imagp()
+   end
+
+   # conjugate to dual number
+   public static conj(a)
+   return Dual(a.realp(),-a.imagp())
+   end
+
+   # cosine
+   public static cos(a)
+   local rp,ip
+   rp := Math.cos(a.realp())
+   ip := a.imagp() * Math.sin(a.realp())
+   return Dual(rp,-ip)
+   end
+
+   # divide two dual numbers
+   public static div(a,b)
+   local rp,ip
+   rp := a.realp() / b.realp()
+   ip := (a.imagp() * b.realp() + a.realp() * b.imagp()) / (b.realp() ^ 2)
+   return Dual(rp,ip)
+   end
+
+   # exponentiation
+   public static exp(a)
+   local rp,ip
+   rp := Math.exp(a.realp())
+   ip := rp * a.imagp()
+   return Dual(rp,ip)
+   end
+
+   # natural logarithm 
+   public static log(a)
+   local rp,ip
+   rp := Math.log(a.realp())
+   ip := a.imagp() / a.realp()
+   return Dual(rp,ip)
+   end
+
+   # base 10 logarithm
+   public static log10(a)
+   local rp
+   rp := Dual(Math.log(10.0),0)
+   return Dual.div(a,rp)
+   end
+
+   # multiplicate two dual numbers
+   public static mul(a,b)
+   local rp,ip
+   rp := a.realp() * b.realp()
+   ip := a.imagp() * b.realp() + a.realp() * b.imagp()
+   return Dual(rp,ip)
+   end
+
+   # negative dual number
+   public static neg(a)
+   return Dual(-a.realp(),-a.imagp())
+   end
+
+   # power
+   public static pow(a,b)
+   local rp,ip
+   rp := a.realp() ^ b.realp()
+   ip := a.imagp() * b.realp() * (a.realp() ^ (b.realp() - 1.0)) + b.imagp() * rp * Math.log(a.realp())
+   return Dual(rp,ip)
+   end
+
+   # sine
+   public static sin(a)
+   local rp,ip
+   rp := Math.sin(a.realp())
+   ip := a.imagp() * Math.cos(a.realp())
+   return Dual(rp,ip)
+   end
+
+   # substract two dual numbers
+   public static sub(a,b)
+   local rp,ip
+   rp := a.realp() - b.realp()
+   ip := a.imagp() - b.imagp()
+   return Dual(rp,ip)
+   end
+
+   # tangent
+   public static tan(a)
+   local rp,ip
+   rp := Math.tan(a.realp())
+   ip := a.imagp() / (Math.cos(a.realp()) ^ 2)
+   return Dual(rp,ip)
+   end
+end
+
+class Functional()
+
+  # transforms a nested list in the usual list
+  public static denested(l)
+  local i,acc
+  acc := []
+  every i := !l do {
+     if type(i) ~== "list" then put(acc,i) else every put(acc,!denested(i))
+  }
+  return acc
+  end
+
+  # first n elements of the list
+  public static drop(n,l)
+  if n = *l then return [] else return l[n+1:0]
+  end
+
+  # left-associative folding of list
+  public static foldl1(f,l)
+  local i,tmp,res
+  tmp := create !l
+  res := @tmp
+  if type(res) == "list" then res := foldl1(f,res)
+  while i := @tmp do {
+     if type(i) ~== "list" then res := f(res,i) else res := FuncTools.foldl(f,res,i)
+  }
+  return res
+  end
+
+  # right-associative folding of list
+  public static foldr1(f,l)
+  local i,tmp,res
+  tmp := create !back(l)
+  res := @tmp
+  if type(res) == "list" then res := foldl1(f,res)
+  while i := @tmp do {
+     if type(i) ~== "list" then res := f(res,i) else res := foldl1(f,i)
+  }
+  return res
+  end
+
+  # division inverse elements of list
+  public static idivide(l)
+  local acc,i
+  acc := 1
+  every i := !l do {
+     if type(i) ~== "list" then acc /:= 1.0/i else acc /:= idivide(i)
+  }
+  return acc
+  end
+
+  # product inverse elements of list
+  public static iproduct(l)
+  local acc,i
+  acc := 1
+  every i := !l do {
+     if type(i) ~== "list" then acc *:= 1.0/i else acc *:= iproduct(i)
+  }
+  return acc
+  end
+
+  # substraction inverse elements of list
+  public static isub(l)
+  local acc,i
+  acc := 0
+  every i := !l do {
+     if type(i) ~== "list" then acc -:= 1.0/i else acc -:= isub(i)
+  }
+  return acc
+  end
+
+  # sum inverse elements of list
+  public static isum(l)
+  local acc,i
+  acc := 0
+  every i := !l do {
+     if type(i) ~== "list" then acc +:= 1.0/i else acc +:= isum(i)
+  }
+  return acc
+  end
+
+  # list reverse
+  public static lreverse(l)
+  local i,n
+  n := *l
+  if n = 1 & type(l[1]) == "list" then l[1] := lreverse(l[1]) 
+  every i := 1 to n/2 do {
+     if type(l[i]) == "list" then l[i] := lreverse(l[i])
+     if type(l[n-i+1]) == "list" then l[n-i+1] := lreverse(l[n-i+1])
+     l[i] :=: l[n-i+1]
+  }
+  return l
+  end
+
+  # list of n function applications to the argument
+  public static napply(f,x,n)
+  local acc,tmp,i
+  tmp := x
+  acc := [tmp]
+  every i := 1 to x do {
+     tmp := f(tmp)
+     put(acc,tmp)
+  }
+  return acc
+  end
+
+  # maximum level of nested list
+  public static nested_level(l)
+  local acc,i
+  acc := 0
+  every i := !l do {
+     if type(i) == "list" then {
+       acc +:= 1
+       acc <:= nested_level(i)
+    }
+  }
+  return acc
+  end
+
+  # returns a list consisting of two parts: a list of satisfying and the list is not satisfying.
+  public static partition(f,l)
+  local a,b,i,tmp,m
+  a := []
+  b := []
+  tmp := []
+  m := []
+  every i := !l do {
+     if type(i) ~== "list" then {
+        if f(i) then put(a,i) else put(b,i)
+     } else {
+        m := partition(f,i)
+        every put(a,!m[1])
+        every put(b,!m[2])
+      }
+    }
+  put(tmp,a)
+  put(tmp,b)
+  return tmp
+  end
+
+  # left-associative list scan
+  public static scanl(f,start,l)
+  local i,acc
+  acc := [start]
+  every i := !l do {
+     if type(i) ~== "list" then start := f(start,i) else start := f(start,FuncTools.foldl(f,start,i))
+     put(acc,start) 
+  }
+  return acc
+  end
+
+  # right-associative list scan
+  public static scanr(f,start,l)
+  local i,acc
+  acc := [start]
+  every i := back(l) do {
+     if type(i) ~== "list" then start := f(start,i) else start := f(start,FuncTools.foldl(f,start,i))
+     put(acc,start) 
+  }
+  return acc
+  end
+
+  # splits on separator line at the list of elements
+  public static split(line,dlms)
+  local w
+  /dlms := ' \t'
+  w := []
+  line ? repeat {
+     tab(upto(~dlms))
+     put(w,tab(many(~dlms))) | break
+  }
+  return w
+  end
+
+  # returns a list consisting only of the unique elements
+  public static uniq(l)
+  local i,tmp
+  tmp := []
+  every i := !l do {
+     if type(i) ~== "list" then {
+        if not keyof(tmp,i) then put(tmp,i)
+     } else put(tmp,uniq(i))
+   }
+   return tmp
+   end
+
+   # transforms list of items in the string elements with separator
+   public static unsplit(l,dlms)
+   local acc,i
+   /dlms := ' \t'
+   acc := ""
+   every i := !l do {
+      if type(i) ~== "list" then acc ||:= i 
+      else acc ||:= unsplit(i,dlms)
+      acc ||:= dlms
+   }
+   return acc[1:*acc]
+   end
+
+   # returns 1 if all the elements of the list satisfy the condition
+   public static allp(f,l)
+   local acc,i
+   acc := 1
+   every i := !l do {
+      if type(i) ~== "list" then {
+        if not f(i) then {
+           acc := 0
+           break
+        }
+      } else acc := allp(f,i)
+   }
+   return acc
+   end
+
+   # returns 1 if at least one item from the list satisfies the condition
+   public static anyp(f,l)
+   local acc,i
+   acc := 0
+   every i := !l do {
+      if type(i) ~== "list" then {
+         if f(i) then {
+            acc := 1
+            break
+         }
+      } else acc := anyp(f,i)
+   }
+   return acc
+   end
+
+   # returns 1 if the list is nested
+   public static nestedp(l)
+   local acc,i
+   acc := 0
+   every i := !l do {
+      if type(i) == "list" then {
+         acc := 1
+         break
+      }
+   }
+   return acc
+   end
+
+   # returns 1 if none of the elements of the list are not satisfies.
+   public static nonep(f,l)
+   local acc,i
+   acc := 1
+   every i := !l do {
+      if type(i) ~== "list" then {
+         if f(i) then {
+            acc := 0
+            break
+          }
+      } else acc := nonep(f,i)
+   }
+   return acc
+   end
+end
