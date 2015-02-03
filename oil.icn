@@ -30,7 +30,7 @@ private i,r
    end
 
    # absolute value
-   public static abs(a,b)
+   public static abs(a)
    local rp,ip
    rp := a.realp() ^ 2
    ip := a.imagp() ^ 2
